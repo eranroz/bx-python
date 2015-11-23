@@ -10,8 +10,7 @@ import numpy
 cimport numpy
 from types cimport *
 from bx.misc.binary_file import BinaryFileReader
-from cStringIO import StringIO
-import zlib
+from io import BytesIO
 
 DEF big_wig_sig = 0x888FFC26
 DEF bwg_bed_graph = 1
@@ -35,7 +34,7 @@ cdef class BigWigBlockHandler( BlockHandler ):
         BlockHandler.__init__( self )
         self.start = start
         self.end = end
-    cdef handle_block( self, str block_data, BBIFile bbi_file ):
+    cdef handle_block( self, bytes block_data, BBIFile bbi_file ):
         cdef bits32 b_chrom_id, b_start, b_end, b_valid_count
         cdef bits32 b_item_step, b_item_span
         cdef bits16 b_item_count
@@ -43,7 +42,7 @@ cdef class BigWigBlockHandler( BlockHandler ):
         cdef int s, e
         cdef float val
         # Now we parse the block, first the header
-        block_reader = BinaryFileReader( StringIO( block_data ), is_little_endian=bbi_file.reader.is_little_endian )
+        block_reader = BinaryFileReader( BytesIO( block_data ), is_little_endian=bbi_file.reader.is_little_endian )
         # _ is skipped byte
         b_chrom_id, b_start, b_end, b_item_step, b_item_span, b_type, _, b_item_count = block_reader.read_and_unpack("LLLLLBBH", 5*4+1+1+2)
 
@@ -131,26 +130,28 @@ cdef class BigWigFile( BBIFile ):
             v.sd.valid_count[i] = round( v.sd.valid_count[i] )
         return v.sd
         
-    cpdef get( self, char * chrom, bits32 start, bits32 end ):
+    cpdef get( self, chrom, bits32 start, bits32 end ):
         """
         Gets all data points over the regions `chrom`:`start`-`end`.
         """
         if start >= end:
             return None
-        chrom_id, chrom_size = self._get_chrom_id_and_size( chrom )
+        chrom_b = chrom.encode()
+        chrom_id, chrom_size = self._get_chrom_id_and_size( chrom_b )
         if chrom_id is None:
             return None
         v = IntervalAccumulatingBlockHandler( start, end )
         self.visit_blocks_in_region( chrom_id, start, end, v )
         return v.intervals
 
-    cpdef get_as_array( self, char * chrom, bits32 start, bits32 end ):
+    cpdef get_as_array( self, chrom, bits32 start, bits32 end ):
         """
         Gets all data points over the regions `chrom`:`start`-`end`.
         """
         if start >= end:
             return None
-        chrom_id, chrom_size = self._get_chrom_id_and_size( chrom )
+        chrom_b = chrom.encode()
+        chrom_id, chrom_size = self._get_chrom_id_and_size( chrom_b )
         if chrom_id is None:
             return None
         v = ArrayAccumulatingBlockHandler( start, end )

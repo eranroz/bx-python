@@ -22,7 +22,6 @@ cimport numpy as np
 import numpy as np
 
 from bx.misc.binary_file import BinaryFileReader
-from cStringIO import StringIO
 import zlib, math
 
 # Signatures for bbi related file types
@@ -69,6 +68,7 @@ cdef class SummarizedData:
         self.max_val = numpy.zeros( self.size, dtype=numpy.float64 )
         self.sum_data = numpy.zeros( self.size, dtype=numpy.float64 )
         self.sum_squares = numpy.zeros( self.size, dtype=numpy.float64 )
+
     cdef accumulate_interval_value( self, bits32 s, bits32 e, float val ):
         cdef int base_start, base_end, base_step, overlap, j, interval_size
         cdef double overlap_factor, interval_weight
@@ -106,7 +106,7 @@ cdef class BlockHandler:
     """
     Callback for `BBIFile.visit_blocks_in_region`
     """
-    cdef handle_block( self, str block_data, BBIFile bbi_file ):
+    cdef handle_block( self, bytes block_data, BBIFile bbi_file ):
         pass
 
 cdef class BBIFile:
@@ -219,13 +219,11 @@ cdef class BBIFile:
         Provides a different view of summary for region, a list of dictionaries
         with keys: mean, max, min, coverage, std_dev
         """
-        
         if end > 2147483647 or start < 0:
             raise ValueError
         results = self.summarize(chrom, start, end, summary_size)
         if not results:
             return None
-        
         rval = []
         for i in range(summary_size):
             sum_data = results.sum_data[i]
@@ -362,7 +360,7 @@ cdef class ZoomLevel:
         cdef float max_val = numpy.nan
         cdef float overlap_factor
         cdef int overlap
-        
+
         if summaries:
             
             # TODO: if we keep this a an array from summary_blocks in region,

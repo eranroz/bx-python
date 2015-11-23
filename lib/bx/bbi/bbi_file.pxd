@@ -40,7 +40,7 @@ cdef class BlockHandler:
     """
     Callback for `BBIFile.visit_blocks_in_region`
     """
-    cdef handle_block( self, str block_data, BBIFile bbi_file )
+    cdef handle_block( self, bytes block_data, BBIFile bbi_file )
 
 cdef class BBIFile:
     """
