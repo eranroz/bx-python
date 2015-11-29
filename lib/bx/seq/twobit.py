@@ -3,10 +3,13 @@ Access to files containing sequence data in 'twobit' format.
 """
 
 import sys
-import _twobit
+from . import  _twobit
 
 from struct import *
-from UserDict import DictMixin
+try:
+       from UserDict import DictMixin
+except:
+       from collections import MutableMapping as DictMixin
 
 TWOBIT_MAGIC_NUMBER = 0x1A412743
 TWOBIT_MAGIC_NUMBER_SWAP = 0x4327411A

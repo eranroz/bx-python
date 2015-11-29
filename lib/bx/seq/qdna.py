@@ -41,11 +41,14 @@ Recognized properties (at present only one):
 """
 
 from bx.seq.seq import SeqFile,SeqReader
-import sys, struct, string
-from StringIO import StringIO
+import sys, struct
+from io import StringIO
 
-qdnaMagic     = 0xC4B47197L    # big endian magic number for qdna files
-qdnaMagicSwap = 0x9771B4C4L
+if sys.version_info > (3,):
+    long = int
+
+qdnaMagic     = long(0xC4B47197)    # big endian magic number for qdna files
+qdnaMagicSwap = long(0x9771B4C4)
 
 class QdnaFile(SeqFile):
 
