@@ -13,7 +13,7 @@ def indent( s ):
     return "\n".join( "    " + line for line in s.split( "\n" ) )
 
 def print_( p, s ):
-    print p, type(s), s
+    print(p, type(s), s)
     return s
 
 @total_ordering
