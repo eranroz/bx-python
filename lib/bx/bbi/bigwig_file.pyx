@@ -102,9 +102,13 @@ cdef class ArrayAccumulatingBlockHandler( BigWigBlockHandler ):
     Accumulates intervals into a list of intervals with values
     """
     cdef numpy.ndarray array
-    def __init__( self, bits32 start, bits32 end ):
+
+    def __init__( self, bits32 start, bits32 end, numpy.ndarray init_arr=None ):
         BigWigBlockHandler.__init__( self, start, end )
-        self.array = numpy.zeros( end - start, dtype=numpy.float32 )
+        if init_arr is None:
+            self.array = numpy.zeros( end - start, dtype=numpy.float32 )
+        else:
+            self.array = init_arr
         self.array[...] = numpy.nan
 
     cdef handle_interval_value( self, bits32 s, bits32 e, float val ):
@@ -144,7 +148,7 @@ cdef class BigWigFile( BBIFile ):
         self.visit_blocks_in_region( chrom_id, start, end, v )
         return v.intervals
 
-    cpdef get_as_array( self, chrom, bits32 start, bits32 end ):
+    cpdef get_as_array( self, chrom, bits32 start, bits32 end, numpy.ndarray init_arr=None ):
         """
         Gets all data points over the regions `chrom`:`start`-`end`.
         """
@@ -154,7 +158,7 @@ cdef class BigWigFile( BBIFile ):
         chrom_id, chrom_size = self._get_chrom_id_and_size( chrom_b )
         if chrom_id is None:
             return None
-        v = ArrayAccumulatingBlockHandler( start, end )
+        v = ArrayAccumulatingBlockHandler( start, end, init_arr )
         self.visit_blocks_in_region( chrom_id, start, end, v )
         return v.array
 
