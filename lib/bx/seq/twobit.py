@@ -51,7 +51,7 @@ class TwoBitSequence( object ):
         # Return
         return dna
         
-class TwoBitFile( DictMixin ):
+class TwoBitFile: #( DictMixin )
     def __init__( self, file, do_mask=True ):
         self.do_mask = do_mask
         # Read magic and determine byte order
@@ -75,7 +75,7 @@ class TwoBitFile( DictMixin ):
         # Read index of sequence names to offsets
         index = dict()
         for i in range( self.seq_count ):
-            name = self.read_p_string()
+            name = self.read_p_string().decode()
             offset = self.read( "L" )
             index[name] = TwoBitSequence( self, offset )
         self.index = index
@@ -85,7 +85,7 @@ class TwoBitFile( DictMixin ):
         if not seq.loaded:
             self.load_sequence( name )
         return seq
-        
+
     def keys( self ):
         return self.index.keys()
         
