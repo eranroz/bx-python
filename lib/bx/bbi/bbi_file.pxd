@@ -79,6 +79,7 @@ cdef class BBIFile:
     cdef bits32 uncompress_buf_size
     # Zoom levels list
     cdef public object level_list
+    cdef object _cache_chrom
 
     cdef visit_blocks_in_region( self, bits32 chrom_id, bits32 start, bits32 end, BlockHandler handler )
     cdef _get_chrom_id_and_size( self, char * chrom )

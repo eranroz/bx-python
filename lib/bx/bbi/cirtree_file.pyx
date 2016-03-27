@@ -1,5 +1,6 @@
+# cython: profile=True
 from bx.misc.binary_file import BinaryFileReader
-
+import cython
 DEF cir_tree_sig = 0x2468ACE0
 
 cdef int ovcmp( bits32 a_hi, bits32 a_lo, bits32 b_hi, bits32 b_lo ):
@@ -15,7 +16,7 @@ cdef int ovcmp( bits32 a_hi, bits32 a_lo, bits32 b_hi, bits32 b_lo ):
         else:
             return 0
 
-cdef overlaps( qchrom, qstart, qend, rstartchrom, rstartbase, rendchrom, rendbase ):
+cdef overlaps( bits32 qchrom, bits32 qstart, bits32 qend, bits32 rstartchrom, bits32 rstartbase, bits32 rendchrom, bits32 rendbase ):
     return ( ovcmp( qchrom, qstart, rendchrom, rendbase ) > 0 ) and \
            ( ovcmp( qchrom, qend, rstartchrom, rstartbase ) < 0 )
 
@@ -46,54 +47,49 @@ cdef class CIRTreeFile:
         # Save root
         self.root_offset = reader.tell()
 
-    def r_find_overlapping( self, int level, bits64 index_file_offset, bits32 chrom_ix, bits32 start, bits32 end, object rval, object reader ):
+    cdef r_find_overlapping( self, int level, bits64 index_file_offset, bits32 chrom_ix, bits32 start, bits32 end, object rval, object reader ):
         cdef UBYTE is_leaf
         cdef bits16 child_count
         reader.seek( index_file_offset )
         # Block header
-        is_leaf = reader.read_uint8()
+        is_leaf, _, child_count = reader.read_and_unpack( "BBH", 4 )
+        #is_leaf = reader.read_uint8()
         assert is_leaf == 0 or is_leaf == 1
-        reader.read_uint8()
-        child_count = reader.read_uint16()
+        #reader.read_uint8()
+        #child_count = reader.read_uint16()
         # Read block
         if is_leaf:
             self.r_find_overlapping_leaf( level, chrom_ix, start, end, rval, child_count, reader )
         else:
             self.r_find_overlapping_parent( level, chrom_ix, start, end, rval, child_count, reader )
 
-    def r_find_overlapping_leaf( self, int level, bits32 chrom_ix, bits32 start, bits32 end, object rval, 
+    cdef r_find_overlapping_leaf( self, int level, bits32 chrom_ix, bits32 start, bits32 end, object rval,
                                 bits16 child_count, object reader ):
         cdef bits32 start_chrom_ix, start_base, end_chrom_ix, end_base
         cdef bits64 offset
         cdef bits64 size
+        cdef int i
+        arr = reader.read_and_unpack('LLLLQQ'*child_count, 32*child_count)
         for i from 0 <= i < child_count:
-            start_chrom_ix = reader.read_uint32()
-            start_base = reader.read_uint32()
-            end_chrom_ix = reader.read_uint32()
-            end_base = reader.read_uint32()
-            offset = reader.read_uint64()
-            size = reader.read_uint64()
+            start_chrom_ix,start_base,end_chrom_ix,end_base,offset,size = arr[i*6:i*6+6]
             if overlaps( chrom_ix, start, end, start_chrom_ix, start_base, end_chrom_ix, end_base ):
                 rval.append( ( offset, size ) )
 
-    def r_find_overlapping_parent( self, int level, bits32 chrom_ix, bits32 start, bits32 end, object rval, 
+    cdef r_find_overlapping_parent( self, int level, bits32 chrom_ix, bits32 start, bits32 end, object rval,
                                   bits16 child_count, object reader ):
         # Read and cache offsets for all children to avoid excessive seeking
         ## cdef bits32 start_chrom_ix[child_count], start_base[child_count], end_chrom_ix[child_count], end_base[child_count]
         ## cdef bits64 offset[child_count]
-        start_chrom_ix = []; start_base = []; end_chrom_ix = []; end_base = []
-        offset = []
+        cdef int i
+        arr = reader.read_and_unpack('LLLLQ'*child_count, 24*child_count)
+        start_chrom_ix, start_base, end_chrom_ix, end_base, offset = [], [], [],[],[]
         for i from 0 <= i < child_count:
-            ## start_chrom_ix[i] = reader.read_bits32()
-            ## start_base[i] = reader.read_bits32()
-            ## end_chrom_ix[i] = reader.read_bits32()
-            ## end_base[i] = reader.read_bits32()
-            ## offset[i] = reader.read_bits64()
-            start_chrom_ix.append( reader.read_uint32() )
-            start_base.append( reader.read_uint32() )
-            end_chrom_ix.append( reader.read_uint32() )
-            end_base.append( reader.read_uint32() )
-            offset.append( reader.read_uint64() )
+            start_chrom_ix.append(arr[i*5])
+            start_base.append(arr[i*5+1])
+            end_chrom_ix.append(arr[i*5+2])
+            end_base.append(arr[i*5+3])
+            offset.append(arr[i*5+4])
+
         # Now recurse
         for i from 0 <= i < child_count:
             if overlaps( chrom_ix, start, end, start_chrom_ix[i], start_base[i], end_chrom_ix[i], end_base[i] ):

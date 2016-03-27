@@ -11,7 +11,7 @@ cimport numpy
 from types cimport *
 from bx.misc.binary_file import BinaryFileReader
 from io import BytesIO
-
+cimport cython
 DEF big_wig_sig = 0x888FFC26
 DEF bwg_bed_graph = 1
 DEF bwg_variable_step = 2
@@ -34,12 +34,17 @@ cdef class BigWigBlockHandler( BlockHandler ):
         BlockHandler.__init__( self )
         self.start = start
         self.end = end
+
+    @cython.overflowcheck(False)
+    @cython.nonecheck(False)
+    @cython.wraparound(False)
+    @cython.boundscheck(False)
     cdef handle_block( self, bytes block_data, BBIFile bbi_file ):
         cdef bits32 b_chrom_id, b_start, b_end, b_valid_count
         cdef bits32 b_item_step, b_item_span
         cdef bits16 b_item_count
         cdef UBYTE b_type
-        cdef int s, e
+        cdef int s, e, k
         cdef float val
         # Now we parse the block, first the header
         block_reader = BinaryFileReader( BytesIO( block_data ), is_little_endian=bbi_file.reader.is_little_endian )
@@ -58,7 +63,12 @@ cdef class BigWigBlockHandler( BlockHandler ):
 
         # TODO: change handle_interval to take a numpy array and this will be
         # much faster.
-        for s, e, val in sevs:
+        starts, ends, vals = iter(zip(*sevs))
+        for k in range(b_item_count):
+            #s,e,val = sevs[k]
+            s= starts[k]
+            e= ends[k]
+            val= vals[k]
             if s < self.start: 
                 s = self.start
             if e > self.end: 

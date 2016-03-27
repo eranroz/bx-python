@@ -53,7 +53,7 @@ cdef class BigBedBlockHandler( BlockHandler ):
         self.chrom_id = chrom_id
         self.start = start
         self.end = end
-    cdef handle_block( self, str block_data, BBIFile bbi_file ):
+    cdef handle_block( self, bytes block_data, BBIFile bbi_file ):
         cdef object string_io
         cdef int length
         cdef bits32 chrom_id, s, e

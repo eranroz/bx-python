@@ -1,4 +1,4 @@
-# cython: profile=False
+# cython: profile=True
 
 """
 Core implementation for reading UCSC "big binary indexed" files.
@@ -246,11 +246,14 @@ cdef class BBIFile:
         """
         Lookup id and size from the chromosome named `chrom`
         """
+        if self._cache_chrom and self._cache_chrom[0] == chrom:
+            return self._cache_chrom[1], self._cache_chrom[2]
         bytes = self.chrom_bpt.find( chrom )
         if bytes is not None:
             # The value is two 32 bit uints, use the BPT's reader for checking byteswapping
             assert len( bytes ) == 8
             chrom_id, chrom_size = self.chrom_bpt.reader.unpack( "II", bytes )
+            self._cache_chrom = (chrom, chrom_id, chrom_size)
             return chrom_id, chrom_size
         else:
             return None, None
